@@ -59,8 +59,10 @@ QBE.util = (() => {
   }
 
   // Está na tela agora? (getClientRects e não offsetParent: os elementos
-  // fixos não têm offsetParent)
-  const visivel = el => !!(el && el.isConnected && el.getClientRects().length);
+  // fixos não têm offsetParent). A tela de trás fica com visibility:
+  // hidden e continua ocupando lugar: sem olhar o estilo, o JOGAR da
+  // abertura contava como visível no mapa e roubava o ENTER.
+  const visivel = el => !!(el && el.isConnected && el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden');
 
   return {
     embaralhar, limitar, distancia, sortear, sortearDe, escolher, $, comArtigo,

@@ -23,6 +23,10 @@ QBE.telas = (() => {
     clearTimeout(avisoT); $('aviso').classList.remove('mostra');
     if (nome !== 'mapa' && QBE.mapa) QBE.mapa.zerarEmbalo();
     for (const t of TELAS) $('tela-' + t).classList.toggle('ativa', t === nome);
+    // O foco não pode ficar num botão da tela que sumiu: com a narração
+    // ligada, o ENTER seguinte apertava o JOGAR escondido de novo.
+    const foco = document.activeElement;
+    if (foco && foco.closest && foco.closest('.tela:not(.ativa)')) foco.blur();
     atualizarBotoesFixos();
     if (anterior !== nome && nome !== 'etapa' && nome !== 'celebracao') focarTitulo();
   }
