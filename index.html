@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Que Bicho É Esse?</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐸</text></svg>" />
+  <!-- a fonte Fredoka vem de assets/fonts (ver estilo.css): o jogo roda sem internet -->
+  <link rel="stylesheet" href="css/estilo.css" />
+</head>
+<body>
+
+  <!-- Faixa de aviso: acerto, erro e recados curtos -->
+  <div id="aviso" class="aviso" role="status" aria-live="polite"></div>
+
+  <!-- Botões que valem em várias telas -->
+  <button type="button" id="btn-config" class="placa placa-icone fixo-dir" aria-label="Configurações">⚙️</button>
+  <button type="button" id="btn-voltar" class="placa fixo-esq" hidden>← Voltar</button>
+  <button type="button" id="btn-repetir" class="placa placa-icone fixo-baixo" aria-label="Repetir a narração (tecla R)" hidden>🔁</button>
+
+  <main id="jogo">
+
+    <!-- ══ ABERTURA ══ -->
+    <section id="tela-abertura" class="tela" aria-labelledby="abertura-titulo">
+      <h1 id="abertura-titulo" class="sr-only" tabindex="-1">Que Bicho É Esse?</h1>
+      <ul class="sr-only">
+        <li>Escute e leia os sons dos animais</li>
+        <li>Sombras e pistas dos animais</li>
+        <li>Resolva as charadas</li>
+      </ul>
+      <p id="precarga-status" class="sr-only" role="status"></p>
+
+      <!-- as sobras da tela mostram a arte desfocada (CSS, pintada uma vez) -->
+      <div id="abertura-borrado" aria-hidden="true"></div>
+      <canvas id="abertura-canvas" class="tela-canvas" aria-hidden="true"></canvas>
+
+      <!-- Modo arte: botões de verdade por cima do que está desenhado -->
+      <div id="abertura-arte" hidden>
+        <button type="button" id="area-jogar" class="area" aria-label="Jogar">
+          <span class="precarga" aria-hidden="true"><span class="precarga-barra"><span class="precarga-cheio"></span></span><span class="precarga-texto">Preparando a floresta…</span></span>
+        </button>
+        <button type="button" id="area-config" class="area" aria-label="Configurações"></button>
+        <div class="area area-info" data-area="som" data-texto="Escute e leia os sons dos animais"></div>
+        <div class="area area-info" data-area="sombra" data-texto="Sombras e pistas dos animais"></div>
+        <div class="area area-info" data-area="charada" data-texto="Resolva as charadas"></div>
+        <button type="button" id="area-continuar" class="area-placa placa" hidden>↩ Continuar</button>
+        <button type="button" id="area-apagar" class="area-placa placa" hidden>🗑 Apagar progresso</button>
+      </div>
+
+      <!-- Modo montado: tela em pé ou estreita, ou arte que não abriu -->
+      <div id="abertura-montada" hidden>
+        <div class="montada-logo">
+          <img id="montada-logo-img" alt="" hidden />
+          <p id="montada-logo-texto" class="logo-texto" aria-hidden="true"><span class="logo-1">Que Bicho</span> <span class="logo-2">É Esse?</span></p>
+        </div>
+        <div class="montada-desafios" aria-hidden="true">
+          <div class="placa letreiro letreiro-som" data-texto="Escute e leia os sons dos animais">🔊 Escute e leia os sons dos animais</div>
+          <div class="placa letreiro letreiro-sombra" data-texto="Sombras e pistas dos animais">👁️ Sombras e pistas dos animais</div>
+          <div class="placa letreiro letreiro-charada" data-texto="Resolva as charadas">🧩 Resolva as charadas</div>
+        </div>
+        <div class="montada-botoes">
+          <button type="button" id="montada-jogar" class="placa botao-grande botao-jogar">
+            <span class="botao-rotulo">▶ Jogar</span>
+            <span class="precarga" aria-hidden="true"><span class="precarga-barra"><span class="precarga-cheio"></span></span><span class="precarga-texto">Preparando a floresta…</span></span>
+          </button>
+          <button type="button" id="montada-continuar" class="placa" hidden>↩ Continuar</button>
+          <button type="button" id="montada-apagar" class="placa" hidden>🗑 Apagar progresso</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ MAPA ══ -->
+    <section id="tela-mapa" class="tela" aria-labelledby="mapa-titulo">
+      <h1 id="mapa-titulo" class="sr-only" tabindex="-1">Mapa da floresta</h1>
+      <canvas id="mapa-canvas" class="tela-canvas" aria-hidden="true"></canvas>
+      <div id="mapa-placar" class="placa hud hud-placar" aria-label="Coroas"><span aria-hidden="true">👑</span> <span id="mapa-coroas">0</span></div>
+      <div id="mapa-selo" class="placa hud hud-selo" aria-hidden="true"></div>
+      <button type="button" id="btn-ajuda" class="placa placa-icone hud hud-ajuda" aria-label="Como jogar">💡</button>
+      <div class="hud hud-minimapa placa" aria-hidden="true"><canvas id="minimapa"></canvas></div>
+      <div class="hud hud-painel placa">
+        <h2 class="painel-titulo">Moitas</h2>
+        <ol id="painel-moitas"></ol>
+      </div>
+      <!-- Só para leitores de tela: quem não enxerga não leva o sapo até a moita -->
+      <button type="button" id="btn-proxima-moita" class="sr-only sr-foco">Entrar na próxima moita</button>
+    </section>
+
+    <!-- ══ ETAPAS 1 A 3 ══ -->
+    <section id="tela-etapa" class="tela tela-fase" data-etapa="som" aria-labelledby="etapa-titulo">
+      <canvas id="etapa-fundo" class="tela-canvas fundo-canvas" aria-hidden="true"></canvas>
+      <div class="fase-conteudo">
+        <div class="fase-topo">
+          <span id="etapa-onde" class="placa placa-mini">Moita 1 de 6</span>
+          <span id="etapa-folhas" class="folhinhas" aria-hidden="true"><i></i><i></i><i></i></span>
+        </div>
+        <h1 id="etapa-titulo" class="placa fase-titulo" tabindex="-1"></h1>
+        <p id="etapa-sub" class="fase-sub"></p>
+        <div id="etapa-desafio" class="desafio"></div>
+        <div id="etapa-cartas" class="cartas" role="group" aria-label="Escolha o animal"></div>
+      </div>
+      <canvas id="etapa-frente" class="tela-canvas frente-canvas" aria-hidden="true"></canvas>
+    </section>
+
+    <!-- ══ CELEBRAÇÃO ══ -->
+    <section id="tela-celebracao" class="tela tela-fase" aria-labelledby="celebracao-titulo">
+      <canvas id="celebracao-fundo" class="tela-canvas fundo-canvas" aria-hidden="true"></canvas>
+      <div class="fase-conteudo celebracao">
+        <h1 id="celebracao-titulo" class="placa fase-titulo titulo-celebracao" tabindex="-1">Parabéns! 🎉</h1>
+        <p class="fase-sub">Você descobriu 3 animais!</p>
+        <div id="celebracao-bichos" class="celebracao-bichos"></div>
+        <ul id="celebracao-fatos" class="celebracao-fatos"></ul>
+        <p id="celebracao-selo" class="placa selo-coroas"></p>
+        <button type="button" id="btn-seguir" class="placa botao-grande">Próxima moita ▶</button>
+      </div>
+      <canvas id="celebracao-frente" class="tela-canvas frente-canvas" aria-hidden="true"></canvas>
+    </section>
+
+    <!-- ══ FINAL ══ -->
+    <section id="tela-final" class="tela tela-fase" aria-labelledby="final-titulo">
+      <canvas id="final-fundo" class="tela-canvas fundo-canvas" aria-hidden="true"></canvas>
+      <div class="fase-conteudo final">
+        <h1 id="final-titulo" class="placa fase-titulo titulo-celebracao" tabindex="-1">🏆 Você conseguiu!</h1>
+        <p class="final-texto">Parabéns! Você descobriu todos os animais das moitas!</p>
+        <p class="placa final-coroas"><span aria-hidden="true">👑</span> <span id="final-coroas">0</span> coroas</p>
+        <p class="final-texto">Jogue de novo: as moitas vão esconder outros animais!</p>
+        <button type="button" id="btn-jogar-de-novo" class="placa botao-grande">🎲 Jogar de novo</button>
+      </div>
+      <canvas id="final-frente" class="tela-canvas frente-canvas" aria-hidden="true"></canvas>
+    </section>
+  </main>
+
+  <!-- ══ CONFIGURAÇÕES ══ -->
+  <div id="janela-config" class="janela" role="dialog" aria-modal="true" aria-labelledby="config-titulo" hidden>
+    <div class="janela-caixa placa">
+      <button type="button" class="janela-fechar placa placa-icone" data-fechar aria-label="Fechar as configurações">✕</button>
+      <h2 id="config-titulo">⚙️ Configurações</h2>
+
+      <label class="cfg-linha" for="cfg-narracao">
+        <input type="checkbox" id="cfg-narracao" />
+        <span class="cfg-texto"><b>🗣️ Narração em voz alta</b>
+          <small>Lê as telas, descreve os animais e as opções</small></span>
+      </label>
+      <p id="cfg-sem-voz" class="cfg-aviso" hidden>⚠️ Este navegador não tem voz em português</p>
+
+      <div class="cfg-linha" role="group" aria-labelledby="cfg-vel-titulo">
+        <span class="cfg-texto"><b id="cfg-vel-titulo">🐢 Velocidade da voz</b>
+          <small>Escolha o ritmo da fala</small></span>
+        <span class="cfg-botoes">
+          <button type="button" class="cfg-vel placa" data-vel="devagar">Devagar</button>
+          <button type="button" class="cfg-vel placa" data-vel="normal">Normal</button>
+          <button type="button" class="cfg-vel placa" data-vel="rapido">Rápido</button>
+        </span>
+      </div>
+
+      <label class="cfg-linha" for="cfg-sons">
+        <input type="checkbox" id="cfg-sons" />
+        <span class="cfg-texto"><b>🔊 Sons dos animais</b>
+          <small>Os áudios gravados de cada bicho</small></span>
+      </label>
+
+      <button type="button" id="cfg-repetir" class="placa">🔁 Repetir narração (tecla R)</button>
+    </div>
+  </div>
+
+  <!-- ══ AJUDA ══ -->
+  <div id="janela-ajuda" class="janela" role="dialog" aria-modal="true" aria-labelledby="ajuda-titulo" hidden>
+    <div class="janela-caixa placa">
+      <button type="button" class="janela-fechar placa placa-icone" data-fechar aria-label="Fechar a ajuda">✕</button>
+      <h2 id="ajuda-titulo">💡 Como jogar</h2>
+      <div class="ajuda-item ajuda-andar"><b>🕹️ Andar</b><p>Setas ou WASD. No celular, arraste o dedo.<br />O sapo só anda pelas trilhas de terra.</p></div>
+      <div class="ajuda-item ajuda-moita"><b>🌿 Entrar na moita</b><p>Chegue perto da moita que se mexe e aperte E ou ENTER.<br />Ou toque nela.</p></div>
+      <div class="ajuda-item ajuda-arvore"><b>🌳 Árvore sagrada</b><p>Complete as <span id="ajuda-total">6</span> moitas e vá até a árvore do centro!</p></div>
+      <div class="ajuda-item ajuda-sorteio"><b>🎲 Sempre diferente</b><p>Cada partida sorteia outros animais para as moitas.</p></div>
+      <div class="ajuda-item ajuda-som"><b>🗣️ Jogando pelo som</b><p>Ligue a narração em ⚙️.<br />1 2 3 4: escolhe a resposta · R: repete a pergunta<br />S: ouve o bicho de novo · ENTER no mapa: entra na próxima moita</p></div>
+    </div>
+  </div>
+
+  <!-- ══ CONFIRMAÇÃO (antes de apagar o que a criança já fez) ══ -->
+  <div id="janela-confirmacao" class="janela" role="alertdialog" aria-modal="true" aria-labelledby="conf-titulo" aria-describedby="conf-texto" hidden>
+    <div class="janela-caixa placa">
+      <h2 id="conf-titulo"></h2>
+      <p id="conf-texto" class="conf-texto"></p>
+      <div class="conf-botoes">
+        <button type="button" id="conf-nao" class="placa botao-verde"></button>
+        <button type="button" id="conf-sim" class="placa botao-vermelho"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Na ordem da seção 6: dados primeiro, laço por último -->
+  <script src="js/config.js"></script>
+  <script src="js/dados.js"></script>
+  <script src="js/sprites.js"></script>
+  <script src="js/trilhas.js"></script>
+  <script src="js/util.js"></script>
+  <script src="js/recursos.js"></script>
+  <script src="js/sprite.js"></script>
+  <script src="js/efeitos.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/voz.js"></script>
+  <script src="js/salvar.js"></script>
+  <script src="js/sorteio.js"></script>
+  <script src="js/abertura.js"></script>
+  <script src="js/mapa.js"></script>
+  <script src="js/etapas.js"></script>
+  <script src="js/telas.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
