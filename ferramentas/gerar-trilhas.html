@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Gerar trilhas — Que Bicho É Esse?</title>
+<style>
+  :root{ --gold:#FFD700; --fundo:#12200f; --caixa:#1b2e18; --borda:#000; }
+  *{box-sizing:border-box}
+  body{margin:0;padding:24px 16px;background:var(--fundo);color:#fff;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.5}
+  .folha{max-width:1180px;margin:0 auto}
+  h1{font-size:24px;margin:0 0 6px}
+  .sub{color:#9ccc9c;margin:0 0 20px}
+  .caixa{background:var(--caixa);border:5px solid var(--borda);box-shadow:6px 6px 0 var(--borda);padding:16px 18px;margin-bottom:18px}
+  .passo{font-weight:700;color:var(--gold);margin-bottom:8px}
+  ol{margin:0;padding-left:20px} li{margin-bottom:4px}
+  .controles{display:flex;flex-wrap:wrap;gap:14px 22px;align-items:center}
+  .controles label{display:flex;gap:8px;align-items:center}
+  input[type=range]{width:140px}
+  button{font:inherit;font-weight:700;cursor:pointer;background:var(--gold);color:#000;border:4px solid #000;box-shadow:4px 4px 0 #000;padding:8px 14px}
+  button.leve{background:#cfe8c6}
+  canvas{max-width:100%;height:auto;border:4px solid #000;display:block;background:#000;cursor:crosshair;touch-action:none}
+  textarea{width:100%;height:180px;margin-top:10px;font-family:ui-monospace,Consolas,monospace;font-size:12px;background:#0c160a;color:#cfe8c6;border:4px solid #000;padding:10px;white-space:pre;overflow:auto}
+  .num{color:#9ccc9c;font-size:14px;margin-top:10px}
+  .avisos{margin:10px 0 0;padding-left:20px;color:#ffd9a0}
+  .ok{color:#9be27b}
+  code{background:#0c160a;padding:1px 5px;border-radius:4px}
+</style>
+</head>
+<body>
+<div class="folha">
+  <h1>🛤️ Gerar trilhas</h1>
+  <p class="sub">Refaz o <code>js/trilhas.js</code> (por onde o sapo e as moitas andam) e a lista de brilhos da água a partir do desenho do mapa. Use quando o fundo do mapa mudar.</p>
+
+  <div class="caixa">
+    <div class="passo">Como usar</div>
+    <ol>
+      <li>Escolha a imagem do fundo do mapa (a de <code>SPRITES.mapa.fundo</code>).</li>
+      <li>Marque as pontes com <b>Ponte</b> (arraste um retângulo): a cor de madeira só vale dentro delas, para troncos e tocos não virarem caminho.</li>
+      <li>Com o pincel, apague o que parece terra e não é (a barraca laranja) e pinte o que faltou. O pincel age antes de engrossar, como no kit.</li>
+      <li>Confira os avisos do início, da árvore e das moitas, e copie os dois textos: o primeiro substitui TODO o <code>js/trilhas.js</code>; o segundo vai no <code>MAPA</code> do <code>js/dados.js</code>.</li>
+    </ol>
+    <p><input type="file" id="arquivo" accept="image/*" /></p>
+    <div class="controles">
+      <label><input type="radio" name="modo" value="ponte" checked /> Ponte</label>
+      <label><input type="radio" name="modo" value="pintar" /> Pintar trilha</label>
+      <label><input type="radio" name="modo" value="apagar" /> Apagar trilha</label>
+      <label>Pincel <input type="range" id="pincel" min="1" max="5" value="2" /> <span id="pincel-v">2</span></label>
+      <label>Fração da célula <input type="range" id="limiar" min="20" max="70" value="40" /> <span id="limiar-v">40%</span></label>
+      <label>Vermelho mínimo da terra <input type="range" id="vermelho" min="140" max="220" value="175" /> <span id="vermelho-v">175</span></label>
+      <button type="button" id="kit" class="leve">Usar as marcações do mapa do kit</button>
+      <button type="button" id="limpar" class="leve">Limpar marcações</button>
+    </div>
+  </div>
+
+  <div class="caixa" id="caixaPreview" hidden>
+    <div class="passo">Conferência</div>
+    <p class="num">Claro = dá para pisar · amarelo = ponte · verde/vermelho = pincel · ciano = início · laranja = árvore · rosa = moitas · pontinhos brancos = brilhos da água</p>
+    <canvas id="tela"></canvas>
+    <p class="num" id="numeros"></p>
+    <ul class="avisos" id="avisos"></ul>
+  </div>
+
+  <div class="caixa" id="caixaSaida" hidden>
+    <div class="passo">Cole isto em js/trilhas.js (substitua tudo)</div>
+    <textarea id="saida" readonly spellcheck="false"></textarea>
+    <button type="button" id="copiar">📋 Copiar</button>
+    <div class="passo" style="margin-top:18px">Cole isto no MAPA de js/dados.js (no lugar do brilhosAgua)</div>
+    <textarea id="saidaAgua" readonly spellcheck="false"></textarea>
+    <button type="button" id="copiarAgua">📋 Copiar</button>
+  </div>
+</div>
+
+<script src="../js/config.js"></script>
+<script src="../js/dados.js"></script>
+<script src="../js/trilhas.js"></script>
+<script>
+'use strict';
+// As regras de cor são as da 2.0 e as do kit: mudou aqui, refaça o kit.
+const CELL = 8;
+const KIT = { pontes: [[800, 432, 880, 512], [272, 704, 368, 792]], apagar: [[1040, 120, 1088, 168]] };
+const $ = id => document.getElementById(id);
+let W = 0, H = 0, GW = 0, GH = 0, px = null, img = null;
+let terra = null, ponte = null;            // máscaras por pixel
+let pontes = [], marcas = new Map();       // marcas: índice da célula → 1 (pintar) | 0 (apagar)
+let malha = null, agua = [];
+
+// Terra batida: vermelho alto, azul baixo, degradê R > G > B
+const ehTerra = (r, g, b, vmin) => r >= vmin && b <= 150 && (r - b) >= 70 && g >= 100 && g <= 215 && r > g && g > b;
+// Madeira das pontes: marrom médio
+const ehPonte = (r, g, b) => r >= 110 && r <= 205 && g >= 60 && g <= 150 && b >= 30 && b <= 115 && (r - b) >= 45 && r > g && g > b;
+
+$('arquivo').addEventListener('change', e => {
+  const f = e.target.files && e.target.files[0];
+  if (!f) return;
+  const im = new Image();
+  im.onload = () => { img = im; preparar(); };
+  im.src = URL.createObjectURL(f);       // escolhida pelo <input>: a leitura de pixels é permitida
+});
+
+function preparar() {
+  W = img.naturalWidth; H = img.naturalHeight; GW = Math.floor(W / CELL); GH = Math.floor(H / CELL);
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const c = cv.getContext('2d', { willReadFrequently: true });
+  c.drawImage(img, 0, 0);
+  px = c.getImageData(0, 0, W, H).data;
+  $('tela').width = W; $('tela').height = H;
+  classificar();
+  medirAgua();
+  recalcular();
+  $('caixaPreview').hidden = false; $('caixaSaida').hidden = false;
+}
+
+function classificar() {
+  const vmin = +$('vermelho').value;
+  terra = new Uint8Array(W * H); ponte = new Uint8Array(W * H);
+  for (let i = 0, p = 0; i < W * H; i++, p += 4) {
+    const r = px[p], g = px[p + 1], b = px[p + 2];
+    terra[i] = ehTerra(r, g, b, vmin) ? 1 : 0;
+    ponte[i] = ehPonte(r, g, b) ? 1 : 0;
+  }
+}
+const dentroDePonte = (x, y) => pontes.some(([x0, y0, x1, y1]) => x >= x0 && x < x1 && y >= y0 && y < y1);
+
+function recalcular() {
+  if (!px) return;
+  // 1) conta os pixels de trilha de cada quadradinho (madeira só nas pontes)
+  const conta = new Uint16Array(GW * GH);
+  for (let y = 0; y < GH * CELL; y++) {
+    const gy = (y / CELL) | 0;
+    for (let x = 0; x < GW * CELL; x++) {
+      const i = y * W + x;
+      if (terra[i] || (ponte[i] && dentroDePonte(x, y))) conta[gy * GW + ((x / CELL) | 0)]++;
+    }
+  }
+  const minimo = CELL * CELL * (+$('limiar').value / 100);
+  const base = new Uint8Array(GW * GH);
+  for (let i = 0; i < base.length; i++) base[i] = conta[i] >= minimo ? 1 : 0;
+  // 2) o pincel age na base, antes de engrossar
+  for (const [i, v] of marcas) base[i] = v;
+  // 3) engrossa 1 quadradinho para cada lado — a detecção come a beirada
+  const dil = new Uint8Array(GW * GH);
+  for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) {
+    if (!base[y * GW + x]) continue;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const ny = y + dy, nx = x + dx;
+      if (ny >= 0 && ny < GH && nx >= 0 && nx < GW) dil[ny * GW + nx] = 1;
+    }
+  }
+  // 4) fica só o maior pedaço ligado
+  const marca = new Int32Array(GW * GH).fill(-1), fila = new Int32Array(GW * GH);
+  let maior = -1, maiorTam = 0, pedacos = 0;
+  for (let s = 0; s < dil.length; s++) {
+    if (!dil[s] || marca[s] !== -1) continue;
+    let a = 0, b = 0, tam = 0; fila[b++] = s; marca[s] = pedacos;
+    while (a < b) {
+      const v = fila[a++]; tam++;
+      const vx = v % GW, vy = (v / GW) | 0;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = vx + dx, ny = vy + dy;
+        if (nx < 0 || ny < 0 || nx >= GW || ny >= GH) continue;
+        const n = ny * GW + nx;
+        if (dil[n] && marca[n] === -1) { marca[n] = pedacos; fila[b++] = n; }
+      }
+    }
+    if (tam > maiorTam) { maiorTam = tam; maior = pedacos; }
+    pedacos++;
+  }
+  malha = new Uint8Array(GW * GH);
+  for (let i = 0; i < malha.length; i++) malha[i] = marca[i] === maior ? 1 : 0;
+  desenhar();
+  conferir(maiorTam, pedacos);
+  $('saida').value = montarArquivo();
+  $('saidaAgua').value = '  brilhosAgua: [\n' + linhas(agua, '    ', 8) + '\n  ],';
+}
+
+// ── Brilhos da água: pixel azul, longe da margem, um ponto a cada 30 px ──
+function medirAgua() {
+  const n = W * H, azul = new Uint8Array(n);
+  for (let i = 0, p = 0; i < n; i++, p += 4) {
+    const r = px[p] / 255, g = px[p + 1] / 255, b = px[p + 2] / 255;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+    let h = 0;
+    if (d) h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    h = (h * 60 + 360) % 360;
+    const s = mx ? d / mx : 0;
+    azul[i] = h >= 175 && h <= 220 && s >= 0.45 && mx >= 0.45 ? 1 : 0;
+  }
+  // só os pedaços de água com 400 px ou mais (tira flores e enfeites azuis)
+  const rot = new Int32Array(n).fill(-1), fila = new Int32Array(n), grandes = new Uint8Array(n);
+  for (let s = 0; s < n; s++) {
+    if (!azul[s] || rot[s] !== -1) continue;
+    let a = 0, b = 0; fila[b++] = s; rot[s] = 1;
+    while (a < b) {
+      const v = fila[a++], x = v % W, y = (v / W) | 0;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+        const k = ny * W + nx;
+        if (azul[k] && rot[k] === -1) { rot[k] = 1; fila[b++] = k; }
+      }
+    }
+    if (b >= 400) for (let i = 0; i < b; i++) grandes[fila[i]] = 1;
+  }
+  // a 6 px ou mais da margem: erosão por linhas e depois por colunas
+  const R = 6, tmp = new Uint8Array(n), longe = new Uint8Array(n);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    let ok = 1;
+    for (let d = -R; d <= R && ok; d++) { const xx = x + d; if (xx < 0 || xx >= W || !grandes[y * W + xx]) ok = 0; }
+    tmp[y * W + x] = ok;
+  }
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    let ok = 1;
+    for (let d = -R; d <= R && ok; d++) { const yy = y + d; if (yy < 0 || yy >= H || !tmp[yy * W + x]) ok = 0; }
+    longe[y * W + x] = ok;
+  }
+  const cand = [];
+  for (let y = 12; y < H - 12; y++) for (let x = 12; x < W - 12; x++) if (longe[y * W + x]) cand.push([x, y]);
+  // embaralha com semente fixa: o mesmo mapa dá sempre a mesma lista
+  let semente = 3;
+  const aleatorio = () => (semente = (semente * 16807) % 2147483647) / 2147483647;
+  for (let i = cand.length - 1; i > 0; i--) { const j = Math.floor(aleatorio() * (i + 1)); [cand[i], cand[j]] = [cand[j], cand[i]]; }
+  const ESP = 30, grade = new Map();
+  agua = [];
+  for (const [x, y] of cand) {
+    const gx = Math.floor(x / ESP), gy = Math.floor(y / ESP);
+    let perto = false;
+    for (let dy = -1; dy <= 1 && !perto; dy++) for (let dx = -1; dx <= 1 && !perto; dx++) {
+      for (const [ax, ay] of grade.get(`${gx + dx},${gy + dy}`) || []) if ((ax - x) ** 2 + (ay - y) ** 2 < ESP * ESP) { perto = true; break; }
+    }
+    if (perto) continue;
+    agua.push([x, y]);
+    const k = `${gx},${gy}`; if (!grade.has(k)) grade.set(k, []); grade.get(k).push([x, y]);
+  }
+  agua.sort((a, b) => Math.floor(a[1] / 64) - Math.floor(b[1] / 64) || a[0] - b[0]);
+}
+const linhas = (pts, recuo, por) => { const o = []; for (let i = 0; i < pts.length; i += por) o.push(recuo + pts.slice(i, i + por).map(([x, y]) => `[${x},${y}]`).join(', ') + ','); return o.join('\n'); };
+
+// ── Conferência: início, árvore e moitas sobre a trilha e ligados ──
+const naMalha = (x, y) => { const cx = Math.floor(x / CELL), cy = Math.floor(y / CELL); return cx >= 0 && cy >= 0 && cx < GW && cy < GH && malha[cy * GW + cx] === 1; };
+function conferir(tam, pedacos) {
+  const avisos = [];
+  // alcançáveis a partir do início
+  const alc = new Uint8Array(GW * GH);
+  const sx = Math.floor(MAPA.inicio.x / CELL), sy = Math.floor(MAPA.inicio.y / CELL);
+  if (naMalha(MAPA.inicio.x, MAPA.inicio.y)) {
+    const fila = [sy * GW + sx]; alc[fila[0]] = 1;
+    while (fila.length) {
+      const v = fila.pop(), x = v % GW, y = (v / GW) | 0;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + dx, ny = y + dy, k = ny * GW + nx;
+        if (nx >= 0 && ny >= 0 && nx < GW && ny < GH && malha[k] && !alc[k]) { alc[k] = 1; fila.push(k); }
+      }
+    }
+  } else avisos.push('O início do sapo está fora da trilha.');
+  const perto = (x, y, raio) => {
+    for (let cy = 0; cy < GH; cy++) for (let cx = 0; cx < GW; cx++) if (alc[cy * GW + cx] && Math.hypot((cx + 0.5) * CELL - x, (cy + 0.5) * CELL - y) <= raio) return true;
+    return false;
+  };
+  MAPA.moitas.forEach((m, i) => {
+    if (!naMalha(m.x, m.y)) avisos.push(`Moita ${i + 1}: a âncora está fora da trilha (o jogo encaixa até 120 px).`);
+    if (!perto(m.x, m.y, CONFIG.distancias.encaixeAncora)) avisos.push(`Moita ${i + 1}: o sapo não consegue chegar nela.`);
+  });
+  if (!perto(MAPA.arvore.x, MAPA.arvore.y, CONFIG.distancias.arvore)) avisos.push('Árvore: o sapo não chega a menos de 140 px dela.');
+  let dif = '';
+  if (typeof TRILHAS !== 'undefined' && TRILHAS.colunas === GW && TRILHAS.linhas === GH) {
+    const bruto = atob(TRILHAS.bits); let n = 0;
+    for (let i = 0; i < GW * GH; i++) { const atual = (bruto.charCodeAt(i >> 3) >> (7 - (i & 7))) & 1; if (atual !== malha[i]) n++; }
+    dif = ` · diferença para o js/trilhas.js atual: ${n} quadradinhos`;
+  }
+  $('numeros').textContent = `${W}×${H} px · grade ${GW}×${GH} · ${tam} quadradinhos de trilha (${(100 * tam / (GW * GH)).toFixed(1)}% do mapa) · ${pedacos - 1} pedaços soltos descartados · ${agua.length} pontos de brilho na água${dif}`;
+  $('avisos').innerHTML = avisos.length ? avisos.map(a => `<li>${a}</li>`).join('') : '<li class="ok">Tudo certo: início, árvore e as moitas estão ligados pela trilha.</li>';
+}
+
+function desenhar() {
+  const c = $('tela').getContext('2d');
+  c.drawImage(img, 0, 0);
+  c.fillStyle = 'rgba(0,0,0,.66)';
+  for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) if (!malha[y * GW + x]) c.fillRect(x * CELL, y * CELL, CELL, CELL);
+  for (const [i, v] of marcas) { c.fillStyle = v ? 'rgba(80,255,80,.45)' : 'rgba(255,60,60,.5)'; c.fillRect((i % GW) * CELL, Math.floor(i / GW) * CELL, CELL, CELL); }
+  c.lineWidth = 4; c.strokeStyle = '#FFD700';
+  for (const [x0, y0, x1, y1] of pontes) c.strokeRect(x0, y0, x1 - x0, y1 - y0);
+  c.fillStyle = '#fff';
+  for (const [x, y] of agua) { c.beginPath(); c.arc(x, y, 3, 0, 7); c.fill(); }
+  const ponto = (x, y, cor, raio) => { c.strokeStyle = cor; c.lineWidth = 4; c.beginPath(); c.arc(x, y, raio, 0, 7); c.stroke(); };
+  ponto(MAPA.inicio.x, MAPA.inicio.y, '#00e5ff', 12);
+  ponto(MAPA.arvore.x, MAPA.arvore.y, '#ff9800', 16);
+  MAPA.moitas.forEach(m => ponto(m.x, m.y, '#ff4fd8', 14));
+}
+
+// ── O arquivo pronto, no mesmo formato da 2.0 e do kit ──
+function montarArquivo() {
+  const bytes = new Uint8Array(Math.ceil(GW * GH / 8));
+  for (let i = 0; i < GW * GH; i++) if (malha[i]) bytes[i >> 3] |= (1 << (7 - (i & 7)));
+  let bruto = ''; for (let i = 0; i < bytes.length; i++) bruto += String.fromCharCode(bytes[i]);
+  const b64 = btoa(bruto), partes = [];
+  for (let i = 0; i < b64.length; i += 100) partes.push(b64.slice(i, i + 100));
+  const corpo = partes.map((p, i) => `  '${p}'` + (i < partes.length - 1 ? ' +' : '')).join('\n');
+  const barra = '═'.repeat(63);
+  return `'use strict';
+// ${barra}
+//  ONDE DÁ PARA ANDAR
+// ${barra}
+//  O sapo e as moitas só andam pelas trilhas de terra. Este arquivo diz
+//  quais pedaços do desenho são trilha — o jogo não enxerga a imagem.
+//
+//  Como funciona: o mapa virou uma grade de quadradinhos de ${CELL}x${CELL} pixels
+//  (${GW} colunas x ${GH} linhas). Cada quadradinho é 1 bit: 1 = dá para pisar,
+//  0 = mato, água ou pedra. Os bits estão em \`bits\`, em base64, lidos
+//  linha por linha, de cima para baixo.
+//
+//  De onde saiu (${W}x${H}, feito em ferramentas/gerar-trilhas.html):
+//   1. conta como trilha o quadradinho com pelo menos ${$('limiar').value}% dos pixels
+//      em cor de terra batida;
+//   2. a cor de madeira só vale dentro das pontes marcadas (${pontes.length});
+//   3. o pincel pintou ${[...marcas.values()].filter(v => v).length} e apagou ${[...marcas.values()].filter(v => !v).length} quadradinhos;
+//   4. a área cresce 1 quadradinho para cada lado e sobra só o maior
+//      pedaço ligado.
+//
+//  TROCOU O MAPA? Refaça este arquivo com ferramentas/gerar-trilhas.html.
+const TRILHAS = {
+  colunas: ${GW},
+  linhas: ${GH},
+  larguraBase: ${W},
+  alturaBase: ${H},
+  bits:
+${corpo},
+};
+`;
+}
+
+// ── Mouse e toque: ponte (retângulo) e pincel ──
+let arrasto = null;
+const pontoNaImagem = e => { const r = $('tela').getBoundingClientRect(); return [Math.round((e.clientX - r.left) / r.width * W), Math.round((e.clientY - r.top) / r.height * H)]; };
+const modo = () => document.querySelector('input[name=modo]:checked').value;
+function pincelar(x, y) {
+  const t = +$('pincel').value, cx = Math.floor(x / CELL), cy = Math.floor(y / CELL), v = modo() === 'pintar' ? 1 : 0;
+  for (let dy = -t + 1; dy < t; dy++) for (let dx = -t + 1; dx < t; dx++) {
+    const nx = cx + dx, ny = cy + dy;
+    if (nx >= 0 && ny >= 0 && nx < GW && ny < GH) marcas.set(ny * GW + nx, v);
+  }
+}
+$('tela').addEventListener('pointerdown', e => {
+  if (!px) return;
+  const p = pontoNaImagem(e);
+  arrasto = { de: p };
+  if (modo() !== 'ponte') { pincelar(...p); recalcular(); }
+});
+$('tela').addEventListener('pointermove', e => {
+  if (!arrasto) return;
+  const p = pontoNaImagem(e);
+  if (modo() === 'ponte') {
+    desenhar();
+    const c = $('tela').getContext('2d'); c.strokeStyle = '#FFD700'; c.setLineDash([8, 6]); c.lineWidth = 4;
+    c.strokeRect(arrasto.de[0], arrasto.de[1], p[0] - arrasto.de[0], p[1] - arrasto.de[1]); c.setLineDash([]);
+  } else { pincelar(...p); recalcular(); }
+});
+addEventListener('pointerup', e => {
+  if (!arrasto) return;
+  if (modo() === 'ponte') {
+    const [ax, ay] = arrasto.de, [bx, by] = pontoNaImagem(e);
+    if (Math.abs(bx - ax) > 4 && Math.abs(by - ay) > 4) pontes.push([Math.min(ax, bx), Math.min(ay, by), Math.max(ax, bx), Math.max(ay, by)]);
+    recalcular();
+  }
+  arrasto = null;
+});
+
+$('kit').addEventListener('click', () => {
+  pontes = KIT.pontes.map(r => r.slice());
+  marcas = new Map();
+  for (const [x0, y0, x1, y1] of KIT.apagar) for (let y = y0 / CELL; y < y1 / CELL; y++) for (let x = x0 / CELL; x < x1 / CELL; x++) marcas.set(y * GW + x, 0);
+  recalcular();
+});
+$('limpar').addEventListener('click', () => { pontes = []; marcas = new Map(); recalcular(); });
+for (const id of ['pincel', 'limiar', 'vermelho']) $(id).addEventListener('input', () => {
+  $(id + '-v').textContent = $(id).value + (id === 'limiar' ? '%' : '');
+  if (id === 'vermelho' && px) classificar();
+  if (id !== 'pincel') recalcular();
+});
+function copiar(id, botao) {
+  const t = $(id);
+  (navigator.clipboard ? navigator.clipboard.writeText(t.value) : Promise.reject()).catch(() => { t.select(); document.execCommand('copy'); });
+  const b = $(botao); b.textContent = '✅ Copiado!'; setTimeout(() => { b.textContent = '📋 Copiar'; }, 1600);
+}
+$('copiar').addEventListener('click', () => copiar('saida', 'copiar'));
+$('copiarAgua').addEventListener('click', () => copiar('saidaAgua', 'copiarAgua'));
+</script>
+</body>
+</html>
