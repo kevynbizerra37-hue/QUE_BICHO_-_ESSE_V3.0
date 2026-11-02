@@ -38,7 +38,11 @@ QBE.voz = (() => {
   const temVoz = () => disponivel() && (!estado.procurou || !!estado.voz);
 
   // ── Fala UM texto e avisa quando terminou. Só o canal de áudio chama. ──
+  // Os emojis das curiosidades (🌳, 💧) viravam "árvore de folhas
+  // caducas" na boca da voz: saem só da fala, o texto na tela fica igual.
+  const semEmoji = t => String(t).replace(/[\p{Extended_Pictographic}\u{FE0F}\u{200D}]/gu, '').replace(/\s{2,}/g, ' ').trim();
   function falarAgora(texto, item, aoFim) {
+    texto = semEmoji(texto || '');
     if (!estado.ligada || !temVoz() || !texto) { aoFim(); return; }
     try {
       speechSynthesis.cancel();

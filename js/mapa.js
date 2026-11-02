@@ -490,6 +490,9 @@ QBE.mapa = (() => {
     ctx.save();
     ctx.font = '700 18px Fredoka, sans-serif';
     const larg = ctx.measureText(texto).width + 28, alt = 36;
+    // sempre inteiro na tela, mesmo com a moita encostada na borda
+    const vw = innerWidth / (escalaMapa() * cam.zoom);
+    x = U.limitar(x, cam.x + larg / 2 + 6, cam.x + vw - larg / 2 - 6);
     const bx = x - larg / 2, by = y - alt;
     const flutua = U.movimentoReduzido() ? 0 : Math.sin(TAU * 1.2 * S.agora()) * 3;
     ctx.translate(0, flutua);
@@ -539,8 +542,11 @@ QBE.mapa = (() => {
     for (const m of moitas) desenharSelo(ctx, m);
     const texto = toque ? '▶ TOQUE AQUI' : '▶ APERTE E';
     const perto = moitaPerto();
-    if (perto != null && !entrando) desenharAviso(ctx, moitas[perto].x, moitas[perto].y - SPRITES.moita.alturaNoMapa - 22, texto);
-    else if (arvorePerto() && !entrando) desenharAviso(ctx, MAPA.arvore.x, MAPA.arvore.y - SPRITES.arvore.alturaNoMapa - 10, texto);
+    // Perto do topo da tela o aviso sumiria atrás do placar: vai para baixo da moita
+    const alturaHud = 92 / esc;
+    const posAviso = (x, yCima, yBaixo) => desenharAviso(ctx, x, yCima - cam.y < alturaHud ? yBaixo : yCima, texto);
+    if (perto != null && !entrando) posAviso(moitas[perto].x, moitas[perto].y - SPRITES.moita.alturaNoMapa - 22, moitas[perto].y + 48);
+    else if (arvorePerto() && !entrando) posAviso(MAPA.arvore.x, MAPA.arvore.y - SPRITES.arvore.alturaNoMapa - 10, MAPA.arvore.y + 48);
     if (conferindo()) desenharConferencia(ctx);
     ctx.restore();
     if (conferindo()) desenharConferenciaTela(ctx, w);

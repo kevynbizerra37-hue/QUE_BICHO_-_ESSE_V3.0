@@ -238,7 +238,7 @@ button.placa[aria-disabled="true"]{filter:grayscale(.6) brightness(.75);cursor:w
 /* Etapa 1 — a moita grande que toca o som de novo, o balão e a Libras */
 .moita-botao{position:relative;height:100%;max-height:320px;aspect-ratio:1;border-radius:50%;flex:0 1 auto}
 .moita-botao canvas{width:100%;height:100%}
-.moita-selo{position:absolute;right:4%;top:4%;font-size:clamp(20px, 3.6vh, 34px)}
+.moita-selo{position:absolute;right:10%;top:16%;font-size:clamp(20px, 3.6vh, 34px)}
 .balao{position:relative;background:#FFF8E1;color:#3E2723;text-shadow:none;border:4px solid var(--contorno);border-radius:22px;
   padding:clamp(10px, 1.8vh, 20px) clamp(14px, 2vw, 26px);font-size:var(--fs-md);line-height:1.3;max-width:min(560px, 60%)}
 .balao::before{content:'';position:absolute;left:-22px;top:50%;margin-top:-14px;border:14px solid transparent;border-right:20px solid var(--contorno);border-left:0}
@@ -293,10 +293,16 @@ button.placa[aria-disabled="true"]{filter:grayscale(.6) brightness(.75);cursor:w
 @keyframes treme{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-9px)}40%,80%{transform:translateX(9px)}}
 
 /* ═══ CELEBRAÇÃO E FINAL ═══ */
-.celebracao,.final{grid-template-rows:auto auto auto auto auto auto;align-content:center}
+/* A celebração tem 3 curiosidades: em tela baixa ou estreita ela rola em
+   vez de cortar o botão ("safe" mantém o topo visível quando não cabe) */
+.celebracao,.final{grid-template-rows:auto auto auto auto auto auto;align-content:start;align-content:safe center;overflow-y:auto;gap:clamp(6px, 1.2vh, 14px)}
 .celebracao-bichos{display:flex;gap:clamp(8px, 2vw, 26px);justify-content:center;width:min(100%, 900px)}
-.celebracao-bicho{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1 1 0;max-width:240px}
-.celebracao-bicho canvas{width:100%;aspect-ratio:1;max-height:22vh}
+.celebracao-bichos{position:relative}
+/* a moita se abre por cima e os bichos saem um a um (0,25 s entre eles) */
+.celebracao-moita{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(34vh, 260px);height:min(34vh, 260px);pointer-events:none;z-index:2}
+.celebracao-bicho{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1 1 0;max-width:240px;animation:aparece .45s ease backwards}
+@keyframes aparece{0%{transform:scale(.2) translateY(40px);opacity:0}70%{transform:scale(1.1);opacity:1}100%{transform:scale(1)}}
+.celebracao-bicho canvas{width:100%;aspect-ratio:1;max-height:19vh}
 .celebracao-nome{font-size:var(--fs-sm)}
 .celebracao-som{font-size:var(--fs-xs);color:#FFF3C4}
 .celebracao-fatos{list-style:none;display:flex;flex-direction:column;gap:8px;width:min(100%, 820px)}
@@ -333,8 +339,8 @@ button.placa[aria-disabled="true"]{filter:grayscale(.6) brightness(.75);cursor:w
 /* Estreita ou em pé: o "Moita 2 de 6" desce para baixo dos botões fixos
    e as cartas ficam 2 × 2. */
 @media (max-width:640px), (max-aspect-ratio:4/5){
-  .fase-conteudo{padding-top:calc(86px + env(safe-area-inset-top))}
-  .fase-topo{position:absolute;top:calc(14px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);min-height:var(--alvo);white-space:nowrap}
+  .fase-conteudo{padding-top:calc(80px + env(safe-area-inset-top))}
+  .fase-topo{min-height:0;white-space:nowrap}
   .cartas{grid-template-columns:repeat(2, minmax(0, 1fr))}
   .carta-cel{height:clamp(96px, 16.5vh, 210px)}
   .fase-titulo{padding:8px 16px}
@@ -345,13 +351,21 @@ button.placa[aria-disabled="true"]{filter:grayscale(.6) brightness(.75);cursor:w
   .hud-selo{display:none}
   .hud-placar{left:calc(12px + env(safe-area-inset-left));transform:none;padding:8px 16px}
   #minimapa{width:120px;height:80px}
-  .hud-painel{padding:8px 10px}
+  .hud-painel{padding:8px 10px;max-width:none}
   .painel-titulo{display:none}
-  #painel-moitas{flex-direction:row;gap:4px}
+  #painel-moitas{flex-direction:row;gap:3px}
   .painel-bichos,.painel-texto{display:none}
   .painel-item{min-height:0}
+  .painel-num{width:25px;height:25px;font-size:13px;border-width:2px}
   .fase-topo .folhinhas i{width:20px;height:13px}
   .libras{display:none}
+  /* celebração: tudo numa tela de celular, sem precisar rolar */
+  .celebracao-bicho canvas{max-height:13vh}
+  .celebracao-som{font-size:12px}
+  .celebracao-fatos{gap:6px}
+  .celebracao-fatos li{font-size:12.5px;padding:6px 10px;line-height:1.35}
+  .selo-coroas{padding:6px 16px;font-size:20px}
+  .celebracao .botao-grande,.final .botao-grande{padding:10px 20px!important}
 }
 @media (max-height:520px){
   .libras{display:none}
