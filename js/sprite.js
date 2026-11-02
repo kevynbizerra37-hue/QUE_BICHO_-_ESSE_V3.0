@@ -276,7 +276,7 @@ QBE.sprite = (() => {
     const abrindo = estado === 'abrindo' ? U.limitar(t / 0.5, 0, 1) : 0;
     ctx.save();
     ctx.translate(x, y);
-    ctx.rotate(op.semBalanco ? 0 : balancoMoita(estado, t));
+    ctx.rotate(op.semBalanco ? 0 : balancoMoita(estado, t) * (op.balanco == null ? 1 : op.balanco));
     ctx.globalAlpha *= alfa * (1 - abrindo);
     const contorno = Math.max(2, altura * 0.035);
     const pos = CIRCULOS.map(([cx, cy, r, tom]) => {
@@ -307,7 +307,7 @@ QBE.sprite = (() => {
       ctx.restore();
     }
     if (R.pronto(def)) { desenharSprite(ctx, def, t, x, y, { escala: altura / def.quadroA }); return; }
-    desenharEmoji(ctx, '🌳', x, y, altura * 0.95, { alfa: liberada ? 1 : 0.9 });
+    desenharEmoji(ctx, '🌳', x, y, altura * 0.95);
   }
 
   // ── Sapo explorador ──────────────────────────────────────────
