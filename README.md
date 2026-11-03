@@ -71,6 +71,8 @@ Os scripts entram no `index.html` nesta ordem: config, dados, sprites, trilhas, 
 
 ### Ligar um sprite ou um som novo
 
+Para gerar com IA os sprites que faltam, use os pedidos prontos de [`docs/prompt-gerar-sprites.md`](docs/prompt-gerar-sprites.md).
+
 1. Confira o nome e a medida no **Anexo D** da especificação. Os nomes vão em minúsculas, sem acento e sem espaço, porque o GitHub Pages diferencia `Gato.png` de `gato.png`.
 2. Coloque o arquivo na pasta indicada:
    - `assets/sprites/...` para os sprites;
