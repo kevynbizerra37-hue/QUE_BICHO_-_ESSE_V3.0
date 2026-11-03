@@ -224,8 +224,22 @@ QBE.telas = (() => {
       e.preventDefault(); repetir(); return;
     }
     if (janelaAberta()) return;          // com janela aberta, o sapo não anda e nada abre
-    if (atual === 'mapa') QBE.mapa.tecla(e);
+    if (atual === 'abertura') teclaAbertura(e);
+    else if (atual === 'mapa') QBE.mapa.tecla(e);
     else if (atual === 'etapa') QBE.etapas.tecla(e);
+  }
+  // Com a narração ligada, ENTER na abertura joga de qualquer lugar, como
+  // no mapa: sem enxergar, a criança não sabe onde fica o JOGAR, e a
+  // partida inteira tem que dar para jogar só com ENTER e números. Num
+  // botão com foco (Continuar, Apagar), o ENTER é do botão.
+  function teclaAbertura(e) {
+    if (e.key !== 'Enter' || !QBE.voz.ligada()) return;
+    const alvo = e.target;
+    if (alvo && alvo.tagName === 'BUTTON' && U.visivel(alvo)) return;
+    const j = QBE.abertura.modo() === 'arte' ? $('area-jogar') : $('montada-jogar');
+    if (!U.visivel(j)) return;
+    e.preventDefault();
+    j.click();
   }
 
   // ── Ligações ─────────────────────────────────────────────────
@@ -245,6 +259,17 @@ QBE.telas = (() => {
     $('conf-sim').addEventListener('click', () => responderConfirmacao(true));
     // O foco que a criança move com o TAB fala o botão; o que o jogo põe, não
     for (const id of ['conf-nao', 'conf-sim']) $(id).addEventListener('focus', e => { if (!focoDoJogo) QBE.voz.narrar(e.target.textContent, { guardar: false }); });
+    // Os botões da abertura e os que ficam por cima das telas também dizem
+    // onde o foco está: sem isso, quem joga pela narração não achava o
+    // Continuar com o TAB
+    const NOMES = {
+      'area-jogar': 'Jogar', 'montada-jogar': 'Jogar',
+      'area-continuar': 'Continuar de onde parou', 'montada-continuar': 'Continuar de onde parou',
+      'area-apagar': 'Apagar progresso', 'montada-apagar': 'Apagar progresso',
+      'area-config': 'Configurações', 'btn-config': 'Configurações', 'btn-ajuda': 'Como jogar',
+      'btn-voltar': 'Voltar ao mapa', 'btn-repetir': 'Repetir a narração',
+    };
+    for (const [id, nome] of Object.entries(NOMES)) $(id).addEventListener('focus', () => { if (!focoDoJogo) QBE.voz.narrar(`${nome}. Aperte ENTER.`, { guardar: false }); });
 
     $('cfg-narracao').addEventListener('change', e => {
       QBE.voz.definirLigada(e.target.checked);

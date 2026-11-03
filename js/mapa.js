@@ -367,11 +367,16 @@ QBE.mapa = (() => {
   function tecla(e) {
     const k = nome(e);
     if (MOVE.includes(k)) { teclas[k] = true; e.preventDefault(); return; }
-    if (k === ' ') e.preventDefault();
-    if (k !== 'e' && k !== 'enter') return;
-    // E/ENTER num botão visível com foco (💡, ⚙️) é dele, não do mapa
+    // ENTER/ESPAÇO num botão visível com foco (💡, ⚙️) é dele, não do mapa
     const alvo = e.target;
-    if (alvo && alvo.tagName === 'BUTTON' && U.visivel(alvo)) return;
+    const doBotao = !!(alvo && alvo.tagName === 'BUTTON' && U.visivel(alvo));
+    // O ESPAÇO não rola a página; mas, bloqueado também no botão, o 💡 e o
+    // ⚙️ deixavam de abrir com ele.
+    if (k === ' ' && !doBotao) e.preventDefault();
+    if (k !== 'e' && k !== 'enter') return;
+    // O E continua valendo: o botão não usa o E, e, com o foco esquecido no
+    // 💡 depois de fechar a ajuda, o "▶ Aperte E" não fazia nada.
+    if (k === 'enter' && doBotao) return;
     if (entrando) return;
     const perto = moitaPerto();
     if (perto != null) { entrar(perto); return; }
@@ -430,6 +435,11 @@ QBE.mapa = (() => {
     };
     cv.addEventListener('pointerup', fim);
     cv.addEventListener('pointercancel', () => { arrasto = null; });
+    // O toque já foi tratado no pointerup: cancelar o touchend impede o
+    // clique que o navegador gera depois. Com movimento reduzido a etapa
+    // aparece na hora, e esse "clique fantasma" caía nela (numa carta, por
+    // exemplo, respondendo sem a criança querer).
+    cv.addEventListener('touchend', e => { if (e.cancelable) e.preventDefault(); }, { passive: false });
     cv.addEventListener('click', e => { if (e.pointerType !== 'touch') clicar(e.clientX, e.clientY); });
     cv.addEventListener('mouseleave', () => moitas.forEach(m => { m.mouse = false; }));
     $('btn-proxima-moita').addEventListener('click', () => {

@@ -18,13 +18,19 @@ QBE.voz = (() => {
 
   const disponivel = () => typeof speechSynthesis !== 'undefined' && typeof SpeechSynthesisUtterance !== 'undefined';
 
-  // As vozes chegam depois da carga no Chrome e no Edge (voiceschanged)
+  // As vozes chegam depois da carga no Chrome e no Edge (voiceschanged).
+  // Entre as de português, prefere a instalada no aparelho (localService):
+  // as vozes "Google" do Chrome são de rede, não falam sem internet (e o
+  // jogo roda sem ela, na sala) e podem cortar as falas longas no meio.
   function escolherVoz() {
     if (!disponivel()) return;
     let vs = [];
     try { vs = speechSynthesis.getVoices() || []; } catch (e) { return; }
     if (!vs.length) return;
-    estado.voz = vs.find(v => /^pt[-_]br/i.test(v.lang)) || vs.find(v => /^pt/i.test(v.lang)) || null;
+    const br = vs.filter(v => /^pt[-_]br/i.test(v.lang));
+    const pt = vs.filter(v => /^pt/i.test(v.lang));
+    const doAparelho = lista => lista.find(v => v.localService);
+    estado.voz = doAparelho(br) || br[0] || doAparelho(pt) || pt[0] || null;
     estado.procurou = true;
     avisos.forEach(fn => fn());
   }

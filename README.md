@@ -24,6 +24,7 @@ A especificação completa da 3.0 está em [`docs/prompt-recriar-jogo-v3.md`](do
 | **1 a 4** | escolhe a resposta |
 | **R** | repete a pergunta |
 | **S** | toca o som do bicho de novo |
+| **ENTER** na abertura | começa a partida |
 | **ENTER** no mapa | entra na próxima moita, de qualquer lugar |
 
 ## Rodar no computador
@@ -116,6 +117,11 @@ Escolhas feitas onde a especificação deixava espaço:
 - **Passeio pela trilha:** a moita liberada e os bichos que não voam só escolhem destinos aonde se chega em linha reta pela trilha. Por isso nunca saem do caminho nem do raio.
 - **"▶ Aperte E":** desce para baixo da moita quando ficaria atrás do placar e fica sempre inteiro na tela. Também aparece perto da árvore liberada.
 - **Narração sem emojis:** os emojis saem só da fala. A voz lia "🌳" como "árvore de folhas caducas". O texto na tela fica igual.
+- **Voz do aparelho:** entre as vozes em português, a narração prefere a instalada no aparelho. As vozes "Google" do Chrome são de rede e não falam sem internet.
+- **ENTER na abertura:** com a narração ligada, ENTER fora de um botão aperta o JOGAR, como no mapa. Assim a partida inteira dá para jogar só com ENTER e números (critério 4).
+- **E com o foco num botão:** o ENTER e o ESPAÇO num botão com foco são do botão (critério 24), mas o E entra na moita mesmo assim. O botão não usa o E, e, depois de fechar a ajuda, o foco fica no 💡.
+- **Botões que falam:** com a narração ligada, os botões da abertura e os que ficam por cima das telas dizem o próprio nome quando o TAB chega neles. Na abertura, o TAB vai na ordem Jogar, Continuar, Apagar e ⚙️.
+- **Revelação:** o bicho pula para a esquerda da moita, porque à direita fica o balão com a onomatopeia ou a charada.
 - **Abertura carregando:** enquanto a arte não chega, a abertura mostra "Preparando a floresta… %" no meio da tela.
 - **Carta errada:** volta ao normal depois do tremor de 0,6 s, como na 2.0, para a criança tentar de novo.
 - **Celebração:** cabe na tela em todos os tamanhos testados. Numa tela ainda mais baixa, ela rola em vez de cortar o botão.
@@ -141,6 +147,14 @@ Os critérios da seção 9 da especificação foram conferidos no Chromium sem i
   - abertura nos dois modos;
   - sprites e fundos desligados;
   - celular emulado.
+- **Depuração, além dos critérios:**
+  - teclas, cliques, toques e trocas de tamanho ao acaso, com e sem narração, sem erro nem estado impossível;
+  - cada frase da narração numa moita inteira, o vigia da voz e o limite de 8 s dos sons longos;
+  - no celular, tocar na moita entra uma vez só, e o clique que o navegador gera depois do toque não cai na etapa;
+  - clique duplo na troca de tela não acerta a tela que está saindo;
+  - ESPAÇO e ENTER acionam os botões com foco, e todo alvo de toque tem pelo menos 64 px.
+
+Ficaram sem teste aqui: a voz de verdade (o teste usa uma voz falsa), o Edge, o Firefox e um celular de verdade.
 
 ## Créditos
 

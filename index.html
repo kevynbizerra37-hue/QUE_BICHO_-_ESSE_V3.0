@@ -34,17 +34,18 @@
       <div id="abertura-borrado" aria-hidden="true"></div>
       <canvas id="abertura-canvas" class="tela-canvas" aria-hidden="true"></canvas>
 
-      <!-- Modo arte: botões de verdade por cima do que está desenhado -->
+      <!-- Modo arte: botões de verdade por cima do que está desenhado.
+           Na ordem do TAB: Jogar, Continuar, Apagar e, por último, a engrenagem -->
       <div id="abertura-arte" hidden>
         <button type="button" id="area-jogar" class="area" aria-label="Jogar">
           <span class="precarga" aria-hidden="true"><span class="precarga-barra"><span class="precarga-cheio"></span></span><span class="precarga-texto">Preparando a floresta…</span></span>
         </button>
-        <button type="button" id="area-config" class="area" aria-label="Configurações"></button>
         <div class="area area-info" data-area="som" data-texto="Escute e leia os sons dos animais"></div>
         <div class="area area-info" data-area="sombra" data-texto="Sombras e pistas dos animais"></div>
         <div class="area area-info" data-area="charada" data-texto="Resolva as charadas"></div>
         <button type="button" id="area-continuar" class="area-placa placa" hidden>↩ Continuar</button>
         <button type="button" id="area-apagar" class="area-placa placa" hidden>🗑 Apagar progresso</button>
+        <button type="button" id="area-config" class="area" aria-label="Configurações"></button>
       </div>
 
       <!-- Modo montado: tela em pé ou estreita, ou arte que não abriu -->

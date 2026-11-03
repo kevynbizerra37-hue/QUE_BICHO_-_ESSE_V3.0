@@ -405,10 +405,17 @@ QBE.sprite = (() => {
       });
     }
   }
+  // Só desenha o que está na tela ativa. Olhar a classe da tela custa bem
+  // menos que pedir o estilo calculado de cada visor a cada quadro.
+  function naTela(canvas) {
+    const tela = canvas.closest('.tela');
+    if (!tela) return U.visivel(canvas);
+    return tela.classList.contains('ativa') && canvas.getClientRects().length > 0;
+  }
   function desenharVisores() {
     for (const v of visores) {
       if (!v.canvas.isConnected) { visores.delete(v); continue; }
-      if (!U.visivel(v.canvas)) continue;
+      if (!naTela(v.canvas)) continue;
       desenharVisor(v);
     }
   }

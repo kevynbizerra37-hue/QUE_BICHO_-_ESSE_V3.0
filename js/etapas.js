@@ -277,10 +277,16 @@ QBE.etapas = (() => {
     cena.luzAte({ x: ret.left + ret.width / 2, y: ret.top + ret.height / 2 }, { x: rf.left + rf.width / 2, y: rf.top + rf.height / 2 }, () => { folha.className = 'ganha'; });
     if (est.tipo === 'sombra' && est.visorSombra) { est.visorSombra.revelar(); est.visorSombra.definir({ anim: 'festa', passeio: false }); return; }
     const origem = est.visorMoita ? est.visorMoita.canvas.getBoundingClientRect() : $('etapa-desafio').querySelector('.traco-caixa, .traco-icone').getBoundingClientRect();
-    if (est.visorMoita) est.visorMoita.definir({ estado: 'abrindo' });
+    if (est.visorMoita) {
+      est.visorMoita.definir({ estado: 'abrindo' });
+      const botao = est.visorMoita.canvas.closest('.moita-botao');
+      if (botao) botao.classList.add('aberta');
+    }
     const tam = Math.max(70, Math.min(origem.height * 0.9, 190));
     const de = { x: origem.left + origem.width / 2, y: origem.bottom - origem.height * 0.08 };
-    const para = { x: U.limitar(de.x + origem.width * 0.75, tam / 2 + 10, innerWidth - tam / 2 - 10), y: de.y };
+    // Pula para a esquerda: à direita da moita fica o balão (a onomatopeia,
+    // a charada), e o bicho caía em cima do texto
+    const para = { x: U.limitar(de.x - origem.width * 0.75, tam / 2 + 10, innerWidth - tam / 2 - 10), y: de.y };
     if (!est.visorMoita) { para.x = de.x; de.y = origem.bottom; para.y = origem.top + 10; }
     est.revelacao = { id: est.alvo, t0: S.agora(), de, para, tam };
   }
