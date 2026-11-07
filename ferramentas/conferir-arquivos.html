@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Conferir arquivos — Que Bicho É Esse?</title>
+<style>
+  :root{ --gold:#FFD700; --fundo:#12200f; --caixa:#1b2e18; --borda:#000; }
+  *{box-sizing:border-box}
+  body{margin:0;padding:24px 16px;background:var(--fundo);color:#fff;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.45}
+  .folha{max-width:1100px;margin:0 auto}
+  h1{font-size:24px;margin:0 0 6px}
+  .sub{color:#9ccc9c;margin:0 0 18px}
+  .resumo{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:18px}
+  .resumo span{background:var(--caixa);border:3px solid #000;border-radius:8px;padding:8px 12px;font-weight:700}
+  .legenda{color:#cfe8c6;font-size:14px;margin-bottom:22px}
+  h2{font-size:18px;color:var(--gold);margin:26px 0 8px}
+  table{width:100%;border-collapse:collapse;background:var(--caixa);border:4px solid #000}
+  th,td{padding:8px 10px;border-bottom:2px solid #0b140a;text-align:left;vertical-align:middle;font-size:14px}
+  th{background:#0f1a0d;color:#9ccc9c;font-weight:600}
+  td.selo{font-size:20px;width:36px;text-align:center}
+  code{background:#0c160a;padding:1px 5px;border-radius:4px;color:#e8f5e2;font-size:13px}
+  .dica{color:#ffd9a0;font-size:13px;margin-top:4px}
+  .ruim{color:#ff9e8a;font-weight:700}
+  canvas.previa{background:repeating-conic-gradient(#2b3a28 0 25%, #223020 0 50%) 0 0/16px 16px;border:2px solid #000;border-radius:4px;display:block}
+  button{font:inherit;font-weight:700;cursor:pointer;background:var(--gold);color:#000;border:3px solid #000;border-radius:6px;padding:4px 10px}
+</style>
+</head>
+<body>
+<div class="folha">
+  <h1>🔎 Conferir arquivos</h1>
+  <p class="sub">Percorre o manifesto (<code>js/sprites.js</code>) e as fichas (<code>js/dados.js</code>) e diz, para cada arquivo previsto, se ele está na pasta e se está ligado.</p>
+  <div class="resumo" id="resumo"></div>
+  <p class="legenda">✅ ligado e encontrado · 🟡 o arquivo já está na pasta, falta ligar (a linha diz o que mudar) · ❌ ligado, mas não encontrado · ⬜ ainda não enviado</p>
+  <div id="grupos"></div>
+</div>
+
+<script src="../js/config.js"></script>
+<script src="../js/dados.js"></script>
+<script src="../js/sprites.js"></script>
+<script>
+'use strict';
+// Os caminhos do manifesto partem da pasta do jogo; esta página está em ferramentas/
+const BASE = '../';
+const grupos = [];
+const contagem = { '✅': 0, '🟡': 0, '❌': 0, '⬜': 0 };
+
+function grupo(nome) { const g = { nome, itens: [] }; grupos.push(g); return g; }
+// def: a entrada do manifesto (pode estar desligada); como: o que trocar para ligar
+function imagem(g, rotulo, def, como, opcoes = {}) {
+  if (!def) return;
+  const caminhos = def.arquivos || [def.arquivo];
+  for (const c of caminhos) g.itens.push({ tipo: 'imagem', rotulo, caminho: c, ligado: def.ativo !== false && opcoes.ligado !== false, def, como });
+}
+function som(g, rotulo, caminho, ligado, como) { g.itens.push({ tipo: 'som', rotulo, caminho, ligado, como }); }
+
+// ── Monta a lista inteira, grupo por grupo ──
+const F = SPRITES.fases, A = SPRITES.abertura, E = SPRITES.efeitos;
+const gMapa = grupo('Mapa');
+imagem(gMapa, 'Fundo do mapa', SPRITES.mapa.fundo, 'SPRITES.mapa.fundo: ativo:false → ativo:true');
+SPRITES.mapa.cenario.forEach((c, i) => imagem(gMapa, `Cenário ${i + 1}`, c, `SPRITES.mapa.cenario[${i}]: ativo:false → ativo:true`));
+
+const gAbertura = grupo('Abertura');
+imagem(gAbertura, 'Arte pronta da abertura', F.aberturaPronta, 'SPRITES.fases.aberturaPronta: ativo:false → ativo:true');
+imagem(gAbertura, 'Arte sem os bichos que se mexem', A.fundoLimpo, 'SPRITES.abertura.fundoLimpo: ativo:false → ativo:true');
+imagem(gAbertura, 'Arara pousada', A.arara, 'SPRITES.abertura.arara: ativo:false → ativo:true');
+imagem(gAbertura, 'Tucano pousado', A.tucano, 'SPRITES.abertura.tucano: ativo:false → ativo:true');
+imagem(gAbertura, 'Arara voando', A.araraVoando, 'SPRITES.abertura.araraVoando: ativo:false → ativo:true');
+imagem(gAbertura, 'Sapo do tronco parado', A.sapo.parado, 'SPRITES.abertura.sapo.parado: ativo:false → ativo:true');
+imagem(gAbertura, 'Sapo do tronco pulando', A.sapo.pulando, 'SPRITES.abertura.sapo.pulando: ativo:false → ativo:true');
+imagem(gAbertura, 'Abertura limpa (sem bichos, letreiro e botões)', F.abertura, 'SPRITES.fases.abertura: ativo:false → ativo:true');
+imagem(gAbertura, 'Letreiro em PNG', SPRITES.ui.logo, 'SPRITES.ui.logo: ativo:false → ativo:true');
+
+const gEfeitos = grupo('Efeitos');
+for (const [nome, def] of Object.entries(E)) imagem(gEfeitos, nome, def, `SPRITES.efeitos.${nome}: ativo:false → ativo:true`);
+
+const gFundos = grupo('Fundos das telas');
+for (const nome of ['som', 'sombra', 'caracteristica', 'charada', 'celebracao', 'final', 'aberturaMontada']) imagem(gFundos, nome, F[nome], `SPRITES.fases.${nome}: ativo:false → ativo:true`);
+F.floresta.camadas.forEach((c, i) => imagem(gFundos, `Camada da floresta ${i + 1}`, c, `SPRITES.fases.floresta.camadas[${i}]: ativo:false → ativo:true`));
+
+const gInterface = grupo('Sapo, moita, árvore e interface');
+imagem(gInterface, 'Sapo novo parado', SPRITES.sapo.parado, 'SPRITES.sapo.parado: ativo:false → ativo:true');
+imagem(gInterface, 'Sapo novo andando', SPRITES.sapo.andando, 'SPRITES.sapo.andando: ativo:false → ativo:true');
+imagem(gInterface, 'Sapo da 2.0 (reserva)', SPRITES.sapo.antigo, 'SPRITES.sapo.antigo: ativo:false → ativo:true');
+for (const n of ['parada', 'balancando', 'abrindo']) imagem(gInterface, `Moita ${n}`, SPRITES.moita[n], `SPRITES.moita.${n}: ativo:false → ativo:true`);
+for (const n of ['parada', 'liberada']) imagem(gInterface, `Árvore ${n}`, SPRITES.arvore[n], `SPRITES.arvore.${n}: ativo:false → ativo:true`);
+imagem(gInterface, 'Placa de madeira', SPRITES.ui.placa, 'SPRITES.ui.placa: ativo:false → ativo:true');
+
+const gBichos = grupo('Bichos: sprites');
+for (const id of Object.keys(ANIMAIS)) {
+  const linha = SPRITES.animais[id] || {};
+  for (const anim of ['parado', 'andando', 'festa']) {
+    const v = linha[anim];
+    const def = Object.assign({}, SPRITES.animais.padrao[anim], v && v !== true ? v : {});
+    def.arquivo = def.arquivo || `assets/sprites/animais/${id}/${anim}.png`;
+    imagem(gBichos, `${ANIMAIS[id].nome} — ${anim}`, def, `SPRITES.animais.${id}.${anim}: false → true`, { ligado: !!v });
+  }
+}
+const gIlustracoes = grupo('Bichos: ilustrações (reserva do sprite)');
+const gSons = grupo('Bichos: sons');
+for (const [id, a] of Object.entries(ANIMAIS)) {
+  const img = a.imagem || `assets/images/animais/${id}.png`;
+  imagem(gIlustracoes, a.nome, { arquivo: img, ativo: !!a.imagem }, `ANIMAIS.${id}.imagem: null → '${img}'`);
+  const s = a.som || `assets/sounds/${id}.mp3`;
+  som(gSons, a.nome, s, !!a.som, `ANIMAIS.${id}.som: null → '${s}'`);
+}
+
+// ── Testa cada arquivo (imagem pelo <img>, som pelo <audio>: vale no file://) ──
+const abrirImagem = c => new Promise(ok => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => ok(null); i.src = BASE + c; });
+const abrirSom = c => new Promise(ok => {
+  const a = new Audio(); a.preload = 'metadata';
+  let fim = false; const acabar = v => { if (!fim) { fim = true; ok(v); } };
+  a.onloadedmetadata = () => acabar(a); a.onerror = () => acabar(null); a.src = BASE + c;
+  setTimeout(() => acabar(null), 6000);
+});
+function esperado(def) {
+  if (def.largura && def.altura) return [def.largura, def.altura];
+  if (def.quadroL && def.colunas && !def.arquivos) {
+    const linhas = def.linhas ? Math.max(...Object.values(def.linhas)) + 1 : (def.linha || 0) + Math.ceil((def.quadros || 1) / def.colunas);
+    return [def.quadroL * def.colunas, def.quadroA * linhas];
+  }
+  return null;
+}
+
+// Prévia: a animação rodando, na ordem da `sequencia` quando houver
+const previas = [];
+function previa(def, img) {
+  const cv = document.createElement('canvas');
+  cv.className = 'previa'; cv.width = 96; cv.height = 96;
+  previas.push({ cv, def, img });
+  return cv;
+}
+function animarPrevias(t) {
+  for (const p of previas) {
+    const c = p.cv.getContext('2d'), d = p.def;
+    c.clearRect(0, 0, 96, 96);
+    const fps = d.fps || 0, seq = d.sequencia, n = seq ? seq.length : (d.quadros || 1);
+    let k = fps ? Math.floor(t / 1000 * fps) : 0;
+    k = d.loop === false ? Math.min(k % (n + Math.ceil(fps)), n - 1) : k % n;
+    const q = seq ? seq[k] : k;
+    const qw = d.quadroL || p.img.naturalWidth, qh = d.quadroA || p.img.naturalHeight;
+    const cols = d.colunas || 1;
+    const sx = d.quadroL ? (q % cols) * qw : 0, sy = d.quadroL ? ((d.linha || 0) + Math.floor(q / cols)) * qh : 0;
+    const esc = Math.min(92 / qw, 92 / qh);
+    c.imageSmoothingEnabled = !(esc >= 2);
+    c.drawImage(p.img, sx, sy, qw, qh, (96 - qw * esc) / 2, (96 - qh * esc) / 2, qw * esc, qh * esc);
+  }
+  requestAnimationFrame(animarPrevias);
+}
+
+async function conferir(item) {
+  const linha = { selo: '⬜', medidas: '', nota: '', previa: null };
+  if (item.tipo === 'imagem') {
+    const img = await abrirImagem(item.caminho);
+    if (item.ligado) linha.selo = img ? '✅' : '❌';
+    else linha.selo = img ? '🟡' : '⬜';
+    if (img) {
+      const e = esperado(item.def);
+      const real = `${img.naturalWidth}×${img.naturalHeight}`;
+      if (e) {
+        const bate = img.naturalWidth === e[0] && img.naturalHeight === e[1];
+        linha.medidas = `esperado ${e[0]}×${e[1]} · real ${real}` + (bate ? '' : ' ⚠️');
+        if (!bate) linha.nota = '<span class="ruim">As medidas não batem com o manifesto.</span>';
+      } else linha.medidas = `real ${real}`;
+      if (item.def.quadroL || item.def.fps) linha.previa = previa(item.def, img);
+    }
+  } else {
+    const a = await abrirSom(item.caminho);
+    if (item.ligado) linha.selo = a ? '✅' : '❌';
+    else linha.selo = a ? '🟡' : '⬜';
+    if (a) {
+      const s = a.duration;
+      linha.medidas = isFinite(s) ? `${s.toFixed(1)} s` : '';
+      if (s > CONFIG.limiteSomMs / 1000) linha.nota = `<span class="ruim">Passa de ${CONFIG.limiteSomMs / 1000} s: o jogo corta, mas vale cortar o arquivo.</span>`;
+      const b = document.createElement('button'); b.textContent = '▶ ouvir';
+      b.onclick = () => { a.currentTime = 0; a.play(); };
+      linha.previa = b;
+    }
+  }
+  if (linha.selo === '🟡') linha.nota += `<div class="dica">Para ligar: <code>${item.como}</code></div>`;
+  if (linha.selo === '❌') linha.nota += `<div class="dica">Está ligado, mas o arquivo não abriu: confira o nome (minúsculas, sem acento) e a pasta.</div>`;
+  contagem[linha.selo]++;
+  return linha;
+}
+
+(async () => {
+  const raiz = document.getElementById('grupos');
+  for (const g of grupos) {
+    if (!g.itens.length) continue;
+    const h = document.createElement('h2'); h.textContent = g.nome; raiz.appendChild(h);
+    const tabela = document.createElement('table');
+    tabela.innerHTML = '<thead><tr><th></th><th>Arquivo</th><th>Medidas</th><th>Prévia</th><th>Observação</th></tr></thead>';
+    const corpo = document.createElement('tbody');
+    tabela.appendChild(corpo); raiz.appendChild(tabela);
+    const linhas = await Promise.all(g.itens.map(conferir));
+    g.itens.forEach((item, i) => {
+      const l = linhas[i], tr = document.createElement('tr');
+      tr.innerHTML = `<td class="selo">${l.selo}</td><td><b>${item.rotulo}</b><br><code>${item.caminho}</code></td><td>${l.medidas}</td><td class="pv"></td><td>${l.nota}</td>`;
+      if (l.previa) tr.querySelector('.pv').appendChild(l.previa);
+      corpo.appendChild(tr);
+    });
+  }
+  document.getElementById('resumo').innerHTML = Object.entries(contagem).map(([s, n]) => `<span>${s} ${n}</span>`).join('');
+  requestAnimationFrame(animarPrevias);
+})();
+</script>
+</body>
+</html>

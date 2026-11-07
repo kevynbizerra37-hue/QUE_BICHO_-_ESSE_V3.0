@@ -1,0 +1,3 @@
+Vídeos de Libras de cada bicho (um por animal, em .mp4).
+Para ligar um vídeo, troque `libras: null` pela ficha do bicho em js/dados.js,
+por exemplo: libras: "assets/videos/libras/tatu.mp4".
